@@ -3,50 +3,57 @@ import spotipy
 import spotipy.util as util
 import urllib.parse
 
-# USAGE:  python plconvert.py SPOTIFY_USERNAME
+# USAGE:  python plconvert.py INPUT_PL_NAME OUTPUT_PL_NAME
 
-def run(sp, username, input_playlist, output_playlist):
+SCOPE = 'playlist-modify-public'
+USERNAME = 'ralphgonz'
+CLIENT_ID = '48ee37470dea4578b9a1b6f7abd2fd53'
+CLIENT_SECRET = 'e08691c47f664e2bb785f554a1760182'
+REDIRECT_URL = 'http://localhost/'
+OUTPUT_STEP_SIZE = 99
 
-    input_pl_id = get_playlist_id(sp, username, input_playlist)
-    all_tracks = get_playlist_tracks(sp, username, input_pl_id)
+def run(sp, input_playlist, output_playlist):
+
+    input_pl_id = get_playlist_id(sp, input_playlist)
+    all_tracks = get_playlist_tracks(sp, input_pl_id)
     track_ids = lookup_track_ids_by_album(sp, all_tracks)
 
-    output_pl_id = get_playlist_id(sp, username, output_playlist)
+    output_pl_id = get_playlist_id(sp, output_playlist)
+    add_tracks_to_playlist(sp, output_pl_id, track_ids)
 
     sys.exit(0)
 
 def parse_args(*args):
-    if len(args) <= 3:
-        print("Usage: %s user_name playlist_name" % (args[0],))
+    if len(args) <= 2:
+        print("Usage: %s input_playlist_name output_playlist_name" % (args[0],))
         sys.exit(1)
 
-    username = args[1]
-    input_playlist = args[2]
-    output_playlist = args[3]
+    input_playlist = args[1]
+    output_playlist = args[2]
 
-    return username, input_playlist, output_playlist
+    return input_playlist, output_playlist
 
-def config_spotipy(username):
-    scope = 'user-read-currently-playing'
-    token = util.prompt_for_user_token(username, scope, client_id='48ee37470dea4578b9a1b6f7abd2fd53', client_secret='e08691c47f664e2bb785f554a1760182', redirect_uri='http://localhost/')
+def config_spotipy():
+    scope = SCOPE
+    token = util.prompt_for_user_token(USERNAME, scope, client_id=CLIENT_ID, client_secret=CLIENT_SECRET, redirect_uri=REDIRECT_URL)
     if not token:
-        print("Can't get token for " + username)
+        print("Can't get token for " + USERNAME)
         sys.exit(1)
 
     return spotipy.Spotify(auth=token)
 
-def get_playlist_id(sp, username, pl_name):
-    playlists = sp.user_playlists(username)
+def get_playlist_id(sp, pl_name):
+    playlists = sp.user_playlists(USERNAME)
     for playlist in playlists['items']:
-        if playlist['owner']['id'] == username and playlist['name'] == pl_name:
+        if playlist['owner']['id'] == USERNAME and playlist['name'] == pl_name:
             print(f"Found playlist {pl_name} with tracks={playlist['tracks']['total']}")
             return playlist['id']
 
     print(f"Playlist {pl_name} not found")
     sys.exit(1)
 
-def get_playlist_tracks(sp, username, playlist_id):
-    results = sp.user_playlist(username, playlist_id, fields="tracks,next")
+def get_playlist_tracks(sp, playlist_id):
+    results = sp.user_playlist(USERNAME, playlist_id, fields="tracks,next")
     tracks = results['tracks']
     all_tracks = list(tracks['items'])
     while 'next' in tracks:
@@ -97,16 +104,20 @@ def lookup_track_ids_by_album(sp, input_tracks):
 
     return output_track_ids
 
-def add_tracks_to_playlist(sp, output_track_ids, output_playlist_id):
-    pass
-    #sp.user_playlist_add_tracks(user=user_config['username'], playlist_id=user_config['playlist_id'], tracks=all_track_ids)
+def add_tracks_to_playlist(sp, output_playlist_id, output_track_ids):
+    print(f"Adding {len(output_track_ids)} tracks to output playlist in groups of {OUTPUT_STEP_SIZE}")
+    for i in range(0, len(output_track_ids), OUTPUT_STEP_SIZE):
+        print(f"Range [{i}, {i+OUTPUT_STEP_SIZE})")
+        sp.user_playlist_add_tracks(user=USERNAME, 
+                                    playlist_id=output_playlist_id, 
+                                    tracks=output_track_ids[i:i+OUTPUT_STEP_SIZE])
 
 ###############
 
 if __name__ == '__main__':
-    username, input_playlist, output_playlist = parse_args(*sys.argv)
-    sp = config_spotipy(username)
-    run(sp, username, input_playlist, output_playlist)
+    input_playlist, output_playlist = parse_args(*sys.argv)
+    sp = config_spotipy()
+    run(sp, input_playlist, output_playlist)
 
 
 #def show_currently_playing(sp):
