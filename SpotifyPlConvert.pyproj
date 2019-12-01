@@ -12,7 +12,7 @@
     <Name>SpotifyPlConvert</Name>
     <RootNamespace>SpotifyPlConvert</RootNamespace>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <CommandLineArguments>"Ralphs iTunes" "iTunes External"</CommandLineArguments>
+    <CommandLineArguments>ralphgonz "Ralphs iTunes" "iTunes External"</CommandLineArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
