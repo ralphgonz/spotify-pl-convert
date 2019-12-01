@@ -5,6 +5,16 @@ import urllib.parse
 
 # USAGE:  python plconvert.py SPOTIFY_USERNAME
 
+def run(sp, username, input_playlist, output_playlist):
+
+    input_pl_id = get_playlist_id(sp, username, input_playlist)
+    all_tracks = get_playlist_tracks(sp, username, input_pl_id)
+    track_ids = lookup_track_ids_by_album(sp, all_tracks)
+
+    output_pl_id = get_playlist_id(sp, username, output_playlist)
+
+    sys.exit(0)
+
 def parse_args(*args):
     if len(args) <= 3:
         print("Usage: %s user_name playlist_name" % (args[0],))
@@ -25,16 +35,6 @@ def config_spotipy(username):
 
     return spotipy.Spotify(auth=token)
 
-def run(sp, username, input_playlist, output_playlist):
-
-    input_pl_id = get_playlist_id(sp, username, input_playlist)
-    all_tracks = get_playlist_tracks(sp, username, input_pl_id)
-    track_ids = lookup_track_ids(sp, all_tracks)
-
-    output_pl_id = get_playlist_id(sp, username, output_playlist)
-
-    sys.exit(0)
-
 def get_playlist_id(sp, username, pl_name):
     playlists = sp.user_playlists(username)
     for playlist in playlists['items']:
@@ -44,26 +44,6 @@ def get_playlist_id(sp, username, pl_name):
 
     print(f"Playlist {pl_name} not found")
     sys.exit(1)
-
-def get_playlist_albums(sp, username, input_pl_id):
-    output_track_ids = []
-    results = sp.user_playlist(username, input_pl_id, fields="tracks,next")
-    input_tracks = results['tracks']
-    for i, item in enumerate(input_tracks['items']):
-        track = item['track']
-        artist = track['artists'][0]['name']
-        album = track['album']['name']
-        song = track['name']
-        query = f"artist:{artist} track:{song}"
-        found_tracks = sp.search(q=query, type="track", limit=1)
-        if found_tracks and len(found_tracks['tracks']['items']) > 0:
-            id = found_tracks['tracks']['items'][0]['id']
-            print(f"{artist}/{song}: {id}")
-            output_track_ids.append(id)
-        else:
-            print(f"=== Can't match {artist}/{song}")
-            #sp.user_playlist_add_tracks(user=user_config['username'], playlist_id=user_config['playlist_id'], tracks=all_track_ids)
-    return output_track_ids
 
 def get_playlist_tracks(sp, username, playlist_id):
     results = sp.user_playlist(username, playlist_id, fields="tracks,next")
@@ -82,7 +62,6 @@ def lookup_track_ids(sp, input_tracks):
     for item in input_tracks:
         track = item['track']
         artist = track['artists'][0]['name']
-        album = track['album']['name']
         song = track['name']
         query = f"artist:{artist} track:{song}"
         found_tracks = sp.search(q=query, type="track", limit=1)
@@ -92,6 +71,29 @@ def lookup_track_ids(sp, input_tracks):
             output_track_ids.append(id)
         else:
             print(f"=== Can't match {artist}/{song}")
+
+    return output_track_ids
+
+def lookup_track_ids_by_album(sp, input_tracks):
+    albums = set()
+    output_track_ids = []
+    for item in input_tracks:
+        track = item['track']
+        album = track['album']['name']
+        if album in albums:
+            continue
+        albums.add(album)
+        artist = track['artists'][0]['name']
+        query = f"artist:{artist} album:{album}"
+        found_tracks = sp.search(q=query, type="track", limit=20)
+        if not found_tracks:
+            print(f"=== Can't match {artist}/{album}")
+            continue
+        for found_track in found_tracks['tracks']['items']:
+            id = found_track['id']
+            song = found_track['name']
+            print(f"{artist}/{album}/{song}: {id}")
+            output_track_ids.append(id)
 
     return output_track_ids
 
