@@ -3,13 +3,6 @@ import spotipy
 import spotipy.util as util
 import urllib.parse
 
-# Create a spotify client id and set redirect url: https://developer.spotify.com
-# Set environment variables:
-# export SPOTIPY_CLIENT_SECRET='YOUR-CLIENT-SECRET'
-# export SPOTIPY_CLIENT_ID='YOUR-CLIENT-ID'
-# export SPOTIPY_REDIRECT_URI='http://localhost/'
-# USAGE:  python plconvert.py SPOTIFY-USER-NAME INPUT-PL-NAME OUTPUT-PL-NAME
-
 SCOPE = 'playlist-modify-public'
 OUTPUT_STEP_SIZE = 99
 
@@ -25,7 +18,7 @@ def run(sp, username, input_playlist, output_playlist):
     sys.exit(0)
 
 def parse_args(*args):
-    if len(args) <= 3:
+    if len(args) != 4:
         print("Usage: %s spotify_user_name input_playlist_name output_playlist_name" % (args[0],))
         sys.exit(1)
 
@@ -37,8 +30,7 @@ def parse_args(*args):
 
 def config_spotipy(username):
     print(f"Configure Spotipy for username={username}, scope={SCOPE}")
-    scope = SCOPE
-    token = util.prompt_for_user_token(username, scope)
+    token = util.prompt_for_user_token(username, SCOPE)
     if not token:
         print("Can't get token for " + username)
         sys.exit(1)
@@ -67,6 +59,7 @@ def get_playlist_tracks(sp, username, playlist_id):
 
     return all_tracks
 
+# Search songs on a per-album basis to reduce number of API calls
 def lookup_track_ids_by_album(sp, input_tracks):
     albums = set()
     output_track_ids = []
@@ -111,11 +104,6 @@ if __name__ == '__main__':
 #    currid = track['item']['album']['id']
 #    print(f"current id={currid}")
 
-#def show_tracks(tracks):
-#    for i, item in enumerate(tracks['items']):
-#        track = item['track']
-#        print(f"  {i} {track['artists'][0]['name'].encode('utf-8')} {track['name'].encode('utf-8')}")
-
 #def show_playlists(sp):
 #    playlists = sp.user_playlists(username)
 #    for playlist in playlists['items']:
@@ -127,20 +115,3 @@ if __name__ == '__main__':
 #            while tracks['next']:
 #                tracks = sp.next(tracks)
 #                show_tracks(tracks)
-
-#def lookup_track_ids(sp, input_tracks):
-#    output_track_ids = []
-#    for item in input_tracks:
-#        track = item['track']
-#        artist = track['artists'][0]['name']
-#        song = track['name']
-#        query = f"artist:{artist} track:{song}"
-#        found_tracks = sp.search(q=query, type="track", limit=1)
-#        if found_tracks and len(found_tracks['tracks']['items']) > 0:
-#            id = found_tracks['tracks']['items'][0]['id']
-#            print(f"{artist}/{song}: {id}")
-#            output_track_ids.append(id)
-#        else:
-#            print(f"=== Can't match {artist}/{song}")
-#    return output_track_ids
-
