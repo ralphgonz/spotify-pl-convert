@@ -134,3 +134,55 @@ if __name__ == '__main__':
 #            while tracks['next']:
 #                tracks = sp.next(tracks)
 #                show_tracks(tracks)
+
+# Sample "track" object:
+# 
+# 	"track": {
+# 		"album": {
+# 			"album_type": "None",
+# 			"artists": [
+# 			],
+# 			"available_markets": [
+# 			],
+# 			"external_urls": {
+# 			},
+# 			"href": "None",
+# 			"id": "None",
+# 			"images": [
+# 			],
+# 			"name": "Chelsea Girl",
+# 			"release_date": "None",
+# 			"release_date_precision": "None",
+# 			"type": "album",
+# 			"uri": "None"
+# 		},
+# 		"artists": [
+# 			{
+# 				"external_urls": {
+# 				},
+# 				"href": "None",
+# 				"id": "None",
+# 				"name": "Nico",
+# 				"type": "artist",
+# 				"uri": "None"
+# 			}
+# 		],
+# 		"available_markets": [
+# 		],
+# 		"disc_number": 0,
+# 		"duration_ms": 248000,
+# 		"explicit": "False",
+# 		"external_ids": {
+# 		},
+# 		"external_urls": {
+# 		},
+# 		"href": "None",
+# 		"id": "None",
+# 		"is_local": "True",
+# 		"name": "The Fairest Of The Seasons",
+# 		"popularity": 0,
+# 		"preview_url": "None",
+# 		"track_number": 0,
+# 		"type": "track",
+# 		"uri": "spotify:local:Nico:Chelsea+Girl:The+Fairest+Of+The+Seasons:248"
+# 	}
