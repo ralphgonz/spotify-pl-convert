@@ -6,11 +6,13 @@ by dragging to your Liked Songs list in the Spotify app.
 
 ### Prerequisites
 
-1. Install Python spotipy package.
+Note that spotipy's authentication hack requires Python to open a browser so you can copy the redirect url. For Windows, try using git bash.
+
+1. Install Python, pip, and spotipy package.
 
    ```pip install spotipy```
 
-1. Create a spotify client id and redirect url at developer site: 
+1. Create a spotify client id and redirect url (`http://localhost:8080`) at developer site: 
 
    https://developer.spotify.com
 
@@ -19,14 +21,16 @@ by dragging to your Liked Songs list in the Spotify app.
    ```
    export SPOTIPY_CLIENT_SECRET='YOUR-CLIENT-SECRET'
    export SPOTIPY_CLIENT_ID='YOUR-CLIENT-ID'
-   export SPOTIPY_REDIRECT_URI='http://localhost/'
+   export SPOTIPY_REDIRECT_URI='http://localhost:8080'
    ```
 
 ### Prepare Source and Destination Playlists
 
-1. Enable sharing playlists in iTunes.
+1. Enable 'Show Local Files' setting with Spotify App.
 
-1. Import your iTunes playlist to a 'local' playlist with Spotify App.
+1. Add selected local folders sources. You may have to toggle some of the default sources to disable them.
+
+1. Create a Spotify playlist from the selected Local Files.
 
 1. Create an empty destination playlist in Spotify App.
 
@@ -38,6 +42,4 @@ by dragging to your Liked Songs list in the Spotify app.
    python plconvert.py SPOTIFY-USER-NAME INPUT-PL-NAME OUTPUT-PL-NAME
    ```
 
-1. In Spotify app, Select All of the destination playlist contents and drag to Liked Songs
-
-
+1. Optional: In Spotify app, Select All of the destination playlist contents and drag to Liked Songs
