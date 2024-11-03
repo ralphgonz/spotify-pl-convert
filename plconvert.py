@@ -13,12 +13,16 @@ def run(sp, username, input_playlist, output_playlist):
     print("[get all tracks]", flush=True)
     all_tracks = get_playlist_tracks(sp, username, input_pl_id)
     print("[lookup tracks]", flush=True)
-    track_ids = lookup_track_ids_by_album(sp, all_tracks)
+    track_ids = lookup_track_ids_by_artist(sp, all_tracks)
 
     print("[get output playlist id]", flush=True)
     output_pl_id = get_playlist_id(sp, username, output_playlist)
+    print("[get existing tracks]", flush=True)
+    existing_tracks = get_playlist_tracks(sp, username, output_pl_id)
+    print("[filter existing tracks]", flush=True)
+    filtered_track_ids = filter_existing_tracks(track_ids, existing_tracks)
     print("[add tracks]", flush=True)
-    add_tracks_to_playlist(sp, username, output_pl_id, track_ids)
+    add_tracks_to_playlist(sp, username, output_pl_id, filtered_track_ids)
     print("[done]", flush=True)
 
     sys.exit(0)
@@ -63,42 +67,69 @@ def get_playlist_tracks(sp, username, playlist_id):
     print(f"found total {len(tracks)} tracks")
     return tracks
 
-# Search songs on a per-album basis to reduce number of API calls
-def lookup_track_ids_by_album(sp, input_tracks):
-    albums = set()
+# Search songs on a per-artist basis to reduce number of API calls. Also lets not worry about matching album name.
+def lookup_track_ids_by_artist(sp, input_tracks):
+    artists = set()
     output_track_ids = []
+    
+    # Create song dictionary for matching
     song_dictionary = {}
     for item in input_tracks:
         track = item['track']
         artist = track['artists'][0]['name']
-        album = track['album']['name']
         song = track['name']
-        key = f"{artist}|{album}|{song}"
+        key = create_song_key(artist, song)
         song_dictionary[key] = 1
         
     for item in input_tracks:
         track = item['track']
-        album = track['album']['name']
-        if album in albums:
-            continue
-        albums.add(album)
         artist = track['artists'][0]['name']
-        query = f"artist:{artist} album:{album}"
-        found_tracks = sp.search(q=query, type="track", limit=20)
-        if not found_tracks:
-            print(f"=== Can't match {artist}/{album}", flush=True)
+        if artist in artists:
             continue
-        for found_track in found_tracks['tracks']['items']:
+        artists.add(artist)
+        
+        # Get all found tracks for artist
+        query = f"artist:{artist}"
+        found_tracks = sp.search(q=query, type="track", limit=50)
+        if not found_tracks['tracks']['items']:
+            print(f"=== Can't match {artist.encode('utf-8')}", flush=True)
+            continue
+        found_items = found_tracks['tracks']['items']
+        while found_tracks['tracks']['next']:
+            found_tracks = sp.next(found_tracks['tracks'])
+            found_items.extend(found_tracks['tracks']['items'])
+            
+        # Match artist/song name
+        for found_track in found_items:
             id = found_track['id']
             song = found_track['name']
-            key = f"{artist}|{album}|{song}"
+            key = create_song_key(artist, song)
             if not key in song_dictionary:
-                continue;
+                continue
             # print(f"{artist.encode('utf-8')}/{album.encode('utf-8')}/{song.encode('utf-8')}: {id}")
             output_track_ids.append(id)
 
-    print(f"found total {len(output_track_ids)} output tracks")
+    print(f"found total {len(output_track_ids)}/{len(input_tracks)} output tracks")
     return output_track_ids
+
+def create_song_key(artist, song):
+    return f"{artist.encode('utf-8')}|{song.encode('utf-8')}"
+    
+def filter_existing_tracks(output_track_ids, existing_tracks):
+    # create dictionary of existing track ids
+    existing_ids = {}
+    for item in existing_tracks:
+        track = item['track']
+        existing_ids[track['id']] = 1
+    
+    filtered_track_ids = []
+    for id in output_track_ids:
+        if id in existing_ids:
+            continue
+        filtered_track_ids.append(id)
+        
+    print(f"found {len(output_track_ids) - len(filtered_track_ids)} existing tracks")
+    return filtered_track_ids
 
 def add_tracks_to_playlist(sp, username, output_playlist_id, output_track_ids):
     print(f"Adding {len(output_track_ids)} tracks to output playlist in groups of {OUTPUT_STEP_SIZE}")
@@ -134,55 +165,3 @@ if __name__ == '__main__':
 #            while tracks['next']:
 #                tracks = sp.next(tracks)
 #                show_tracks(tracks)
-
-# Sample "track" object:
-# 
-# 	"track": {
-# 		"album": {
-# 			"album_type": "None",
-# 			"artists": [
-# 			],
-# 			"available_markets": [
-# 			],
-# 			"external_urls": {
-# 			},
-# 			"href": "None",
-# 			"id": "None",
-# 			"images": [
-# 			],
-# 			"name": "Chelsea Girl",
-# 			"release_date": "None",
-# 			"release_date_precision": "None",
-# 			"type": "album",
-# 			"uri": "None"
-# 		},
-# 		"artists": [
-# 			{
-# 				"external_urls": {
-# 				},
-# 				"href": "None",
-# 				"id": "None",
-# 				"name": "Nico",
-# 				"type": "artist",
-# 				"uri": "None"
-# 			}
-# 		],
-# 		"available_markets": [
-# 		],
-# 		"disc_number": 0,
-# 		"duration_ms": 248000,
-# 		"explicit": "False",
-# 		"external_ids": {
-# 		},
-# 		"external_urls": {
-# 		},
-# 		"href": "None",
-# 		"id": "None",
-# 		"is_local": "True",
-# 		"name": "The Fairest Of The Seasons",
-# 		"popularity": 0,
-# 		"preview_url": "None",
-# 		"track_number": 0,
-# 		"type": "track",
-# 		"uri": "spotify:local:Nico:Chelsea+Girl:The+Fairest+Of+The+Seasons:248"
-# 	}
