@@ -2,6 +2,7 @@ import sys
 import spotipy
 import spotipy.util as util
 import urllib.parse
+import re
 
 SCOPE = 'playlist-read-private playlist-modify-private playlist-modify-public'
 OUTPUT_STEP_SIZE = 99
@@ -13,7 +14,7 @@ def run(sp, username, input_playlist, output_playlist):
     print("[get all tracks]", flush=True)
     all_tracks = get_playlist_tracks(sp, username, input_pl_id)
     print("[lookup tracks]", flush=True)
-    track_ids = lookup_track_ids_by_artist(sp, all_tracks)
+    track_ids = lookup_track_ids_by_album(sp, all_tracks)
 
     print("[get output playlist id]", flush=True)
     output_pl_id = get_playlist_id(sp, username, output_playlist)
@@ -67,34 +68,40 @@ def get_playlist_tracks(sp, username, playlist_id):
     print(f"found total {len(tracks)} tracks")
     return tracks
 
-# Search songs on a per-artist basis to reduce number of API calls. Also lets not worry about matching album name.
-def lookup_track_ids_by_artist(sp, input_tracks):
-    artists = set()
-    output_track_ids = []
+# Search songs on a per-artist basis to reduce number of API calls.
+# We also attempt initial match on start of album name to avoid response-size limits -- even with paging search results are limited to 100.
+def lookup_track_ids_by_album(sp, input_tracks):
+    artist_albums = set()
+    output_track_ids_set = {}
     
-    # Create song dictionary for matching
-    song_dictionary = {}
+    song_dictionary = create_song_dictionary(input_tracks)
     for item in input_tracks:
         track = item['track']
         artist = track['artists'][0]['name']
-        song = track['name']
-        key = create_song_key(artist, song)
-        song_dictionary[key] = 1
-        
-    for item in input_tracks:
-        track = item['track']
-        artist = track['artists'][0]['name']
-        if artist in artists:
+        album = track['album']['name']
+        short_album = re.sub(r'^\s*(\w+).*', r'\1', album)
+        artist_album = f"{artist}|{short_album}"
+        if artist_album in artist_albums:
             continue
-        artists.add(artist)
+        artist_albums.add(artist_album)
         
-        # Get all found tracks for artist
-        query = f"artist:{artist}"
-        found_tracks = sp.search(q=query, type="track", limit=50)
+        # Get all found tracks for artist/short album
+        if not short_album:
+            query = f"artist:{artist}"
+            found_tracks = sp.search(q=query, type="track")
+        else:
+            query = f"artist:{artist} album:{short_album}"
+            found_tracks = sp.search(q=query, type="track")
+            if not found_tracks['tracks']['items']:
+                query = f"artist:{artist}"
+                found_tracks = sp.search(q=query, type="track")
+                
         if not found_tracks['tracks']['items']:
-            print(f"=== Can't match {artist.encode('utf-8')}", flush=True)
+            print(f"=== Can't find artist and/or album {artist.encode('utf-8')}: {album.encode('utf-8')}", flush=True)
             continue
+
         found_items = found_tracks['tracks']['items']
+        # print(f"{artist_album.encode('utf-8')}: total tracks found {found_tracks['tracks']['total']}")
         while found_tracks['tracks']['next']:
             found_tracks = sp.next(found_tracks['tracks'])
             found_items.extend(found_tracks['tracks']['items'])
@@ -104,16 +111,50 @@ def lookup_track_ids_by_artist(sp, input_tracks):
             id = found_track['id']
             song = found_track['name']
             key = create_song_key(artist, song)
-            if not key in song_dictionary:
+            key2 = create_trimmed_song_key(artist, song)
+            if not key in song_dictionary and not key2 in song_dictionary:
                 continue
             # print(f"{artist.encode('utf-8')}/{album.encode('utf-8')}/{song.encode('utf-8')}: {id}")
-            output_track_ids.append(id)
+            song_dictionary[key] = 2
+            song_dictionary[key2] = 2
+            output_track_ids_set[id] = 1
 
-    print(f"found total {len(output_track_ids)}/{len(input_tracks)} output tracks")
+    print("Unmatched songs:")
+    for item in input_tracks:
+        track = item['track']
+        artist = track['artists'][0]['name']
+        album = track['album']['name']
+        song = track['name']
+        key = create_song_key(artist, song)
+        key2 = create_trimmed_song_key(artist, song)
+        if song_dictionary[key] == 1 and song_dictionary[key2] == 1:
+            print(f"   === {artist.encode('utf-8')}/{album.encode('utf-8')}/{song.encode('utf-8')}")
+            
+    output_track_ids = output_track_ids_set.keys()
+    print(f"found total {len(output_track_ids)}/{len(input_tracks)} distinct output tracks")
     return output_track_ids
 
+def create_song_dictionary(input_tracks):
+    song_dictionary = {}
+    for item in input_tracks:
+        track = item['track']
+        artist = track['artists'][0]['name']
+        song = track['name']
+        key = create_song_key(artist, song)
+        song_dictionary[key] = 1
+        key2 = create_trimmed_song_key(artist, song)
+        song_dictionary[key2] = 1     
+    return song_dictionary
+
+# Trim whitespace and punctuation, convert to lowercase
 def create_song_key(artist, song):
-    return f"{artist.encode('utf-8')}|{song.encode('utf-8')}"
+    song = re.sub(r'[^a-zA-Z]', '', song)
+    return f"{artist.encode('utf-8').lower()}|{song.encode('utf-8').lower()}"
+    
+# Trim parenthesized suffix
+def create_trimmed_song_key(artist, song):
+    song = re.sub(r'\s*[\[(].*', '', song)
+    return create_song_key(artist, song)
     
 def filter_existing_tracks(output_track_ids, existing_tracks):
     # create dictionary of existing track ids
