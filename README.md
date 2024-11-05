@@ -1,8 +1,10 @@
 # Spotify Playlist Converter
 
 Python program to read a 'local' playlist (such as one imported from iTunes) and convert
-it to a playlist of Spotify song IDs. This can then be bulk-liked
-by dragging to your Liked Songs list in the Spotify app.
+it to a playlist of existing Spotify song IDs, so you can:
+
+1. Share the playlist publicly and/or play it on devices missing the local song files
+2. Bulk-like all songs in the playlist by dragging to your Liked Songs list in the Spotify app
 
 ### Prerequisites
 
@@ -30,7 +32,7 @@ Note that spotipy's authentication hack requires Python to open a browser so you
 
 1. Add selected local folders sources. You may have to toggle some of the default sources to disable them.
 
-1. Create a Spotify playlist from the selected Local Files.
+1. Create a Spotify playlist from the selected Local Files. This is only playable on the device containing the local song folders.
 
 1. Create an empty destination playlist in Spotify App.
 
@@ -41,5 +43,5 @@ Note that spotipy's authentication hack requires Python to open a browser so you
    ```
    python plconvert.py SPOTIFY-USER-NAME INPUT-PL-NAME OUTPUT-PL-NAME
    ```
-
+1. You can now share the destination playlist publicly.
 1. Optional: In Spotify app, Select All of the destination playlist contents and drag to Liked Songs
